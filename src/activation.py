@@ -7,7 +7,7 @@ class Activations:
             'relu': self.grad_relu,
             'lrelu': self.grad_lrelu,
             'sigmoid': self.grad_sigmoid,
-            'tanh': self.grad_tanh,  # Fixed incorrect function name
+            'tanh': self.grad_tanh,
             'softmax': self.grad_softmax
         }
 

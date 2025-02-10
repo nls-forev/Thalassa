@@ -2,6 +2,7 @@ import numpy as np
 from layers import *
 from activation import *
 
+
 class BinaryCrossEntropy:
     def __init__(self, cache: dict):
         self.cache = cache

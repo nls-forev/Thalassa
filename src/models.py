@@ -1,3 +1,4 @@
+import pickle
 from layers import *
 from losses import *
 from activation import Activations
@@ -81,7 +82,7 @@ class Sequential:
                 # Compute loss
                 if self.loss == 'ce':
                     loss = CategoricalCrossEntropy(self.cache)
-                    loss.compute_ce(y_batch, preds)
+                    # loss.compute_ce(y_batch, preds)
                     epoch_loss += loss.compute_ce(y_batch,
                                                   preds) * len(x_batch)
                 elif self.loss == 'bce':
@@ -122,6 +123,7 @@ class Sequential:
             return act.tanh(z)
 
     def predict(self, x_test, y_test=None):
+        self.training = False
         y_hat = self.forward(x_test)
         if y_test is not None:
             if self.loss == 'bce':
@@ -135,9 +137,12 @@ class Sequential:
             return y_hat, accuracy
         return y_hat
 
-    def save(self, path: str):
-        np.save(rf'{path}', self.cache, allow_pickle=True)
-        print("File saved!")
-
     def reset(self):
+        """
+        Resets the model by clearing cache and reinitializing all trainable parameters.
+        Use this to restart training with the same architecture but fresh weights.
+        """
         self.cache = {}
+        for layer in self.layers:
+            if isinstance(layer, Dense):
+                layer.init_params()
