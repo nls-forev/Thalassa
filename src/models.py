@@ -1,15 +1,35 @@
 import pickle
 from layers import *
 from losses import *
+from data import *
+from utils import *
+from preprocessing import *
 from activation import Activations
 
 
-class Sequential:
+class Model:
+    def add(self):
+        return NotImplementedError("Every subclass of Optimizer must implement this method!")
+
+    def forward(self):
+        return NotImplementedError("Every subclass of Optimizer must implement this method!")
+
+    def compile(self):
+        return NotImplementedError("Every subclass of Optimizer must implement this method!")
+
+    def fit(self):
+        return NotImplementedError("Every subclass of Optimizer must implement this method!")
+
+    def predict(self):
+        return NotImplementedError("Every subclass of Optimizer must implement this method!")
+
+
+class Sequential(Model):
     def __init__(self):
         self.layers = []
         self.cache = {}
-        self.optimizer = 'rmsprop'
-        self.loss = ''
+        self.optimizer = None
+        self.loss = None
         self.training = True
         self.metrics = ['accuracy']
 
@@ -30,12 +50,14 @@ class Sequential:
     def forward(self, batch: np.ndarray) -> np.ndarray:
         a = batch.T
         dense_idx = 0  # Keep track of dense layer indices
+        act = Activations()
 
         for i, layer in enumerate(self.layers):
             if isinstance(layer, Dropout):
                 if self.training:  # Only apply dropout during training
-                    # Scale by dropout rate
-                    a = layer.drop(a) / (1-layer.drop_percent)
+                    # Apply dropout and store the mask in the cache for backpropagation.
+                    a = layer.drop(a) / (1 - layer.drop_percent)
+                    self.cache[f'dropout_mask{i}'] = layer.mask
                 continue
 
             # For Dense layers
@@ -43,36 +65,30 @@ class Sequential:
             self.cache[f'z{dense_idx}'] = z
             self.cache[f'a_prev{dense_idx}'] = a
 
-            a = self.activate(z, layer.activation)
+            a = act.activations[layer.activation](z)
             self.cache[f'a{dense_idx}'] = a
             dense_idx += 1
         return a.T
 
-    def compile(self, optimizer='rmsprop', loss='bce', metrics=['accuracy']):
-        if loss == 'binary_crossentropy':
-            self.loss = 'bce'
-        elif loss == 'categorical_crossentropy':
-            self.loss = 'ce'
-        else:
-            raise NotImplementedError("Unsupported loss function")
+    def compile(self, optimizer=None, loss=None, metrics=['accuracy']):
+        self.loss = loss
         self.optimizer = optimizer
         self.metrics = metrics
 
     def fit(self, x, y, epochs, lr=1e-3, batch_size=64, stop_at=None):
-        num_classes = np.max(y) + 1
-        y_encoded = np.eye(num_classes)[
-            y.squeeze()] if self.loss == 'ce' else y
+        y_encoded = OneHotEncoder(
+            y) if self.loss == 'categorical_crossentropy' else y
+
+        self.loss: Loss = get_loss_function(self)
+        self.optimizer: Optimizer = get_optimizer_function(self, lr)
 
         for epoch in range(epochs):
             if stop_at and epoch == stop_at:
                 break
 
-            epoch_loss = 0
-            correct = 0
-            total = 0
+            epoch_loss, correct, total = 0, 0, 0
 
             for i in range(0, len(x), batch_size):
-                loss = 0.0
                 x_batch = x[i:i+batch_size]
                 y_batch = y_encoded[i:i+batch_size]
 
@@ -80,61 +96,29 @@ class Sequential:
                 preds = self.forward(x_batch)
 
                 # Compute loss
-                if self.loss == 'ce':
-                    loss = CategoricalCrossEntropy(self.cache)
-                    # loss.compute_ce(y_batch, preds)
-                    epoch_loss += loss.compute_ce(y_batch,
-                                                  preds) * len(x_batch)
-                elif self.loss == 'bce':
-                    loss = BinaryCrossEntropy(self.cache)
-                    epoch_loss += loss.compute_bce(y_batch,
-                                                   preds) * len(x_batch)
+                epoch_loss += self.loss.compute_loss(y_batch,
+                                                     preds) * len(x_batch)
 
-                # Backward pass
-                if self.loss == 'ce':
-                    loss.backward_ce(x_batch, y_batch, self.layers, lr)
-                elif self.loss == 'bce':
-                    loss.backward_bce(x_batch, y_batch, self.layers, lr)
+                # Calculate gradients
+                grads = self.loss.compute_grad(x_batch, y_batch)
 
-                # Calculate accuracy
-                if self.loss == 'ce':
-                    correct += loss.statistics(y_batch, preds)
-                    total += len(y_batch)
-                elif self.loss == 'bce':
-                    correct += loss.statistics(y_batch, preds)
-                    total += len(y_batch)
+                # update weights (optimizer)
+                self.optimizer.update_weights(grads)
+
+                # compute metrics
+                correct += self.loss.statistics(y_batch, preds)
+                total += len(y_batch)
 
             accuracy = correct / total
             print(
                 f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss/len(x):.4f}, Accuracy: {accuracy:.4f}")
 
-    def activate(self, z, activation):
-        # Activation functions.
-        act = Activations()
-        if activation == 'relu':
-            return act.relu(z)
-        elif activation == 'sigmoid':
-            return act.sigmoid(z)
-        elif activation == 'softmax':
-            return act.softmax(z)
-        elif activation == 'lrelu':
-            return act.lrelu(z)
-        elif activation == 'tanh':
-            return act.tanh(z)
+    def evaluate(self, x_test: np.ndarray, y_test: np.ndarray):
+        if isinstance(self.loss, str):
+            pass
 
     def predict(self, x_test, y_test=None):
-        self.training = False
         y_hat = self.forward(x_test)
-        if y_test is not None:
-            if self.loss == 'bce':
-                binary_preds = (y_hat > 0.5).astype(int)
-                accuracy = np.sum(binary_preds == y_test) / len(y_test) * 100
-            elif self.loss == 'ce':
-                pred_classes = np.argmax(y_hat, axis=1)
-                true_classes = y_test.squeeze().astype(int)  # Directly use labels
-                accuracy = np.sum(
-                    pred_classes == true_classes) / len(y_test) * 100
-            return y_hat, accuracy
         return y_hat
 
     def reset(self):
@@ -146,3 +130,7 @@ class Sequential:
         for layer in self.layers:
             if isinstance(layer, Dense):
                 layer.init_params()
+
+
+class ModelWrapper(Model):
+    pass

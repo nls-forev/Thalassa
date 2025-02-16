@@ -23,7 +23,7 @@ def train_test(training_data, labels, x_test=None, y_test=None, random_state=0, 
         return (training_data, labels), (x_test, y_test)
 
 
-def from_directory(folders, labels, input_size=(150, 150)):
+def from_directory(folders: list, labels: list, input_size: tuple = (150, 150)):
     training_data = []
     tasks = []
 

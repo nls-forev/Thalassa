@@ -10,6 +10,14 @@ class Activations:
             'tanh': self.grad_tanh,
             'softmax': self.grad_softmax
         }
+        
+        self.activations = {
+            'relu': self.relu,
+            'lrelu': self.lrelu,
+            'sigmoid': self.sigmoid,
+            'tanh': self.tanh,
+            'softmax': self.softmax
+        }
 
     def relu(self, z: np.ndarray) -> np.ndarray:
         return np.maximum(0, z)

@@ -1,7 +1,11 @@
 import numpy as np
 
 
-class Dense:
+class Layer:
+    pass
+
+
+class Dense(Layer):
     def __init__(self, units, activation='relu', input_size=None):  # Fixed input_size default
         self.units = units
         self.activation = activation
@@ -26,7 +30,7 @@ class Dense:
         self.b = np.zeros((self.units, 1))
 
 
-class Dropout:
+class Dropout(Layer):
     def __init__(self, drop_percent):
         self.drop_percent = drop_percent
 

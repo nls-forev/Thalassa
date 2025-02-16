@@ -1,12 +1,13 @@
 # thalassa/__init__.py
 
-from . import losses
 from . import activation
-from . import load_model
-from . import optimizers
-from . import preprocess
-from . import models
+from . import data
 from . import layers
+from . import losses
+from . import models
+from . import optimizers
+from . import preprocessing
+from . import utils
 
 """
 
