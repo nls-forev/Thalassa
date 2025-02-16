@@ -1,5 +1,5 @@
-from losses import *
-from optimizers import *
+from .losses import *
+from .optimizers import *
 
 
 def get_loss_function(self):

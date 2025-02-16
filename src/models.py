@@ -1,10 +1,10 @@
 import pickle
-from layers import *
-from losses import *
-from data import *
-from utils import *
-from preprocessing import *
-from activation import Activations
+from .layers import *
+from .losses import *
+from .data import *
+from .utils import *
+from .preprocessing import *
+from .activation import Activations
 
 
 class Model:

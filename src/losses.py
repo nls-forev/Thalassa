@@ -1,6 +1,6 @@
 import numpy as np
-from layers import *
-from activation import *
+from .layers import *
+from .activation import *
 
 
 class Loss:

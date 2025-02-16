@@ -1,6 +1,10 @@
-from layers import *
-from models import *
+import sys
+import os
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+from thalassa.src.layers import *
+from thalassa.src.models import Sequential
 from keras.datasets import mnist
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
